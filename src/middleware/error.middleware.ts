@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
+import multer from "multer";
 import { zodErrorFormatter } from "@/utils";
 import { CustomError } from "@/types";
+import { MAX_UPLOAD_SIZE_BYTES } from "./upload.middleware";
 
 export const errorMiddleware = (
   err: any,
@@ -22,6 +24,17 @@ export const errorMiddleware = (
         errors: zodErrorFormatter(err),
         message: "Validation failed",
       });
+    }
+
+    // Multer upload errors
+    if (err instanceof multer.MulterError) {
+      const message =
+        err.code === "LIMIT_FILE_SIZE"
+          ? `File is too large. Maximum size is ${MAX_UPLOAD_SIZE_BYTES / (1024 * 1024)}MB`
+          : err.message;
+
+      error = new Error(message) as CustomError;
+      error.statusCode = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
     }
 
     // Mongoose bad ObjectId

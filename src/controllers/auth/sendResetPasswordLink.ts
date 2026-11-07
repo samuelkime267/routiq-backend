@@ -14,7 +14,7 @@ export const sendResetPasswordLink = async (
 ) => {
   try {
     const { email } = req.body as ResetPasswordSchemaType;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
       const error = new Error() as CustomError;
@@ -67,12 +67,15 @@ export const sendResetPasswordLink = async (
 
     await user.save();
 
+    const { html, text } = passwordResetTemplate(
+      `${FRONTEND_URL}/reset-password/${token}`,
+    );
+
     await sendMail({
       to: user.email,
-      subject: "Password Reset Link",
-      html: passwordResetTemplate(
-        `${FRONTEND_URL}/auth/reset-password/${token}`,
-      ),
+      subject: "Reset your Routiq password",
+      html,
+      text,
     });
 
     res.status(200).json({

@@ -14,10 +14,24 @@ export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 
 export const SMTP_HOST = process.env.SMTP_HOST || "";
-export const SMTP_PORT = Number(process.env.SMTP_PORT || 0);
+export const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
+export const SMTP_SECURE =
+  (process.env.SMTP_SECURE || "false").toLowerCase() === "true";
+export const SMTP_SERVICE = process.env.SMTP_SERVICE || "";
 export const SMTP_USER = process.env.SMTP_USER || "";
 export const SMTP_PASS = process.env.SMTP_PASS || "";
+export const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || "Routiq";
+export const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL || "";
 
-export const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+export const FRONTEND_URL =
+  process.env.FRONTEND_URL || "http://auth.localhost:3000";
+
+export const ADMIN_URL =
+  process.env.ADMIN_URL || "http://admin.localhost:3000";
 
 export const HASH_SECRET = process.env.HASH_SECRET || "";
+
+export const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "";
+export const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "";
+export const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || "";
+export const CLOUDINARY_FOLDER = process.env.CLOUDINARY_FOLDER || "routiq";

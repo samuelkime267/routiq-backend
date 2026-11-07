@@ -16,6 +16,7 @@ export const registerSchema = z.object({
       /[^A-Za-z0-9]/,
       "Password must contain at least one special character",
     ),
+  role: z.enum(["user", "vendor"]).default("user"),
 });
 
 export type RegisterSchemaType = z.infer<typeof registerSchema>;

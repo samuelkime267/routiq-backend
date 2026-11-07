@@ -1,7 +1,7 @@
 import { FRONTEND_URL, PORT } from "@/config/env";
 import { UserDocument } from "@/models/user.model";
 import { CustomError } from "@/types";
-import { generateJwtToken } from "@/utils";
+import { generateJwtToken, refreshTokenCookieOptions } from "@/utils";
 import { NextFunction, Request, Response } from "express";
 import passport from "passport";
 
@@ -28,7 +28,7 @@ export const googleOAuthCallback = async (
                   from:"oauth",
                   error: ${JSON.stringify(err)}
                   },
-                  'http://localhost:5173'
+                  '${FRONTEND_URL}'
                 );
                 window.close();
               </script>
@@ -39,13 +39,7 @@ export const googleOAuthCallback = async (
       }
 
       const token = generateJwtToken(user._id);
-      return res.cookie("refreshToken", token.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-        path: "/api/v1/auth",
-      }).send(`
+      return res.cookie("refreshToken", token.refreshToken, refreshTokenCookieOptions).send(`
         <html>
           <body>
             <script>
@@ -54,7 +48,7 @@ export const googleOAuthCallback = async (
                   from:"oauth",
                   success:true
                 },
-                'http://localhost:5173'
+                '${FRONTEND_URL}'
               );
               window.close();
             </script>

@@ -1,5 +1,6 @@
 import Token from "@/models/token.model";
 import { CustomError } from "@/types";
+import { clearRefreshTokenCookieOptions } from "@/utils";
 import { NextFunction, Request, Response } from "express";
 
 export const logout = async (
@@ -33,12 +34,7 @@ export const logout = async (
     ]);
 
     res
-      .clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/api/v1/auth",
-      })
+      .clearCookie("refreshToken", clearRefreshTokenCookieOptions)
       .status(200)
       .json({ message: "User logged out successfully", success: true });
   } catch (error) {

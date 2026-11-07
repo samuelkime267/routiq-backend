@@ -1,7 +1,7 @@
 import { UserDocument } from "@/models/user.model";
 import { NextFunction, Request, Response } from "express";
-import crypto from "crypto";
 import { CustomError } from "@/types";
+import { hashKey } from "@/utils";
 
 export const verifyEmail = async (
   req: Request,
@@ -26,7 +26,7 @@ export const verifyEmail = async (
       });
     }
 
-    const hashedOtp = crypto.createHash("sha256").update(token).digest("hex");
+    const hashedOtp = hashKey(token);
     if (user.emailVerificationToken !== hashedOtp) {
       return res.status(400).json({
         message: "Invalid or expired token",

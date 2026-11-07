@@ -1,7 +1,7 @@
 import User from "@/models/user.model";
 import { NextFunction, Request, Response } from "express";
-import crypto from "crypto";
 import { CustomError } from "@/types";
+import { hashKey } from "@/utils";
 import { UpdatePasswordSchemaType } from "@/schemas/auth";
 import bcrypt from "bcryptjs";
 
@@ -21,7 +21,7 @@ export const resetPassword = async (
       throw error;
     }
 
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const hashedToken = hashKey(token);
     const user = await User.findOne({
       passwordResetToken: hashedToken,
       passwordResetTokenExpiryDate: { $gt: Date.now() },

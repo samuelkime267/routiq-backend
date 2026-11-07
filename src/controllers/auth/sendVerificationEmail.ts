@@ -56,10 +56,13 @@ export const sendVerificationEmail = async (
 
     await user.save();
 
+    const { html, text } = emailVerificationTemplate(otp);
+
     await sendMail({
       to: user.email,
-      subject: "Email Verification",
-      html: emailVerificationTemplate(otp),
+      subject: "Verify your Routiq email",
+      html,
+      text,
     });
 
     res.status(200).json({

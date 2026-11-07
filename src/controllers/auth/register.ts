@@ -2,21 +2,25 @@ import { NextFunction, Request, Response } from "express";
 import { RegisterSchemaType } from "@/schemas/auth";
 import User from "@/models/user.model";
 import { CustomError } from "@/types";
-import { generateJwtToken } from "@/utils";
+import { generateJwtToken, refreshTokenCookieOptions } from "@/utils";
+import { actorFromUser, recordActivity } from "@/lib/activity";
 import bcrypt from "bcryptjs";
-import mongoose from "mongoose";
 
 export const register = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
   try {
-    const { email, name, username, password } = req.body as RegisterSchemaType;
-    const existingUserEmail = await User.findOne({ email });
-    const existingUserUsername = await User.findOne({ username });
+    const { email, name, username, password, role } =
+      req.body as RegisterSchemaType;
+    const normalizedEmail = email.toLowerCase();
+    const normalizedUsername = username.toLowerCase();
+
+    const existingUserEmail = await User.findOne({ email: normalizedEmail });
+    const existingUserUsername = await User.findOne({
+      username: normalizedUsername,
+    });
 
     if (existingUserEmail) {
       const error = new Error() as CustomError;
@@ -34,25 +38,28 @@ export const register = async (
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      email,
+      email: normalizedEmail,
       name,
-      username,
+      username: normalizedUsername,
       password: hashedPassword,
+      role,
     });
 
     const token = generateJwtToken(user._id);
 
-    await session.commitTransaction();
-    session.endSession();
+    if (user.role === "vendor") {
+      await recordActivity({
+        type: "vendor_registered",
+        title: "New vendor registered",
+        description: `${user.name} joined the marketplace as a vendor.`,
+        actor: actorFromUser(user),
+        subject: { type: "vendor", id: user._id, label: user.name },
+        href: `/vendors?search=${encodeURIComponent(user.email)}`,
+      });
+    }
 
     res
-      .cookie("refreshToken", token.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-        path: "/api/v1/auth",
-      })
+      .cookie("refreshToken", token.refreshToken, refreshTokenCookieOptions)
       .status(201)
       .json({
         message: "User created successfully",
@@ -60,8 +67,6 @@ export const register = async (
         data: { user, token },
       });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     next(error);
   }
 };

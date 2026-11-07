@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { CustomError } from "../types";
-import jwt, { TokenExpiredError } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/env";
 import User from "../models/user.model";
 
@@ -41,12 +41,17 @@ export const isAuthenticated = async (
       error.statusCode = 401;
       throw error;
     }
+    if (user.status && user.status !== "active") {
+      const error = new Error("Account is not active") as CustomError;
+      error.statusCode = 403;
+      throw error;
+    }
 
     req.user = user;
 
     next();
   } catch (error) {
-    if (error instanceof TokenExpiredError) {
+    if (error instanceof jwt.JsonWebTokenError) {
       const error = new Error("User not authenticated") as CustomError;
       error.statusCode = 401;
       return next(error);
