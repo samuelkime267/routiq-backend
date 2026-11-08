@@ -405,6 +405,7 @@ async function seed() {
         stock: randInt(0, 120),
         images: [],
         status,
+        publicationStatus: status === "approved" ? "published" : "unpublished",
         rejectionReason:
           status === "rejected" ? "Product images do not meet catalogue guidelines." : null,
         reviewedBy: reviewedAt ? admin?._id ?? null : null,
@@ -435,6 +436,7 @@ async function seed() {
       stock: randInt(5, 60),
       images: [],
       status: "pending",
+      publicationStatus: "unpublished",
       reviewedAt: null,
       reviewedBy: null,
       createdAt,

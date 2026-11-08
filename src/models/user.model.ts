@@ -20,7 +20,6 @@ const userSchema = new mongoose.Schema(
     },
     username: {
       type: String,
-      unique: true,
       trim: true,
       lowercase: true,
     },
@@ -166,6 +165,22 @@ const userSchema = new mongoose.Schema(
         return result;
       },
     },
+  },
+);
+
+/**
+ * Usernames are optional: invited administrators and Google sign-ups never
+ * choose one. A plain `unique` index on the field would admit only a single
+ * document without a username, so the second such account failed with E11000
+ * on `{ username: null }`. The partial index only enforces uniqueness for
+ * documents that actually store a string username.
+ */
+userSchema.index(
+  { username: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { username: { $type: "string" } },
+    name: "username_1",
   },
 );
 

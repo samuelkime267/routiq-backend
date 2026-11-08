@@ -12,6 +12,7 @@ import storeRouter from "./routes/store.route";
 import uploadRouter from "./routes/upload.route";
 import adminRouter from "./routes/admin.route";
 import vendorRouter from "./routes/vendor.route";
+import productRouter from "./routes/product.route";
 import notificationRouter from "./routes/notification.route";
 import morgan from "morgan";
 const app = express();
@@ -50,6 +51,7 @@ app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/stores", storeRouter);
 app.use("/api/v1/vendors", vendorRouter);
+app.use("/api/v1/products", productRouter);
 app.use("/api/v1/notifications", notificationRouter);
 app.use("/api/v1/uploads", uploadRouter);
 

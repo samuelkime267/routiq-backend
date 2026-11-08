@@ -12,6 +12,8 @@
     "start": "node -r tsconfig-paths/register dist/app.js",
     "seed:admin": "ts-node -r tsconfig-paths/register src/scripts/seedAdmin.ts",
     "seed:dashboard": "ts-node -r tsconfig-paths/register src/scripts/seedDashboard.ts",
+    "migrate:username-index": "ts-node -r tsconfig-paths/register src/scripts/migrateUsernameIndex.ts",
+    "migrate:product-publication": "ts-node -r tsconfig-paths/register src/scripts/migrateProductPublication.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -9,6 +9,10 @@ export const NOTIFICATION_TYPES = [
   "store_reactivated",
   "vendor_suspended",
   "vendor_reactivated",
+  "product_approved",
+  "product_rejected",
+  "product_suspended",
+  "product_restored",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

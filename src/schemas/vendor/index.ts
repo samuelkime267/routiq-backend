@@ -27,7 +27,7 @@ const paginationQuery = {
 
 export const vendorProductsQuerySchema = z.object({
   status: z
-    .enum(["draft", "pending", "approved", "rejected", "archived"])
+    .enum(["draft", "pending", "approved", "rejected", "suspended", "archived"])
     .optional(),
   search: z.string().trim().max(120).optional(),
   ...paginationQuery,

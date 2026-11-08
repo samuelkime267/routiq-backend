@@ -7,6 +7,8 @@ export const ACTIVITY_TYPES = [
   "store_rejected",
   "product_approved",
   "product_rejected",
+  "product_suspended",
+  "product_restored",
   "order_created",
   "payment_confirmed",
   "shipment_updated",

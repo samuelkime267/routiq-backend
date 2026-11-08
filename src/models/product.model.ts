@@ -5,9 +5,22 @@ export const PRODUCT_STATUSES = [
   "pending",
   "approved",
   "rejected",
+  "suspended",
   "archived",
 ] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+
+/**
+ * Publication is deliberately separate from moderation. Approval only means
+ * the listing passed catalogue review; the vendor still decides whether the
+ * product is visible in the marketplace.
+ */
+export const PRODUCT_PUBLICATION_STATUSES = [
+  "unpublished",
+  "published",
+] as const;
+export type ProductPublicationStatus =
+  (typeof PRODUCT_PUBLICATION_STATUSES)[number];
 
 /**
  * Catalogue listing. Products are owned by a store (the selling surface) and a
@@ -85,8 +98,37 @@ const productSchema = new mongoose.Schema(
       default: "draft",
       index: true,
     },
+    /**
+     * Set by the vendor after approval. Moderation actions never change this
+     * field, so an approved listing does not become available automatically.
+     */
+    publicationStatus: {
+      type: String,
+      enum: [...PRODUCT_PUBLICATION_STATUSES],
+      default: "unpublished",
+      index: true,
+    },
     rejectionReason: {
       type: String,
+      default: null,
+    },
+    suspensionReason: {
+      type: String,
+      default: null,
+    },
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
+    suspendedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    /** Moderation status to return to when a suspension is restored. */
+    previousStatus: {
+      type: String,
+      enum: [...PRODUCT_STATUSES],
       default: null,
     },
     reviewedBy: {
@@ -104,6 +146,7 @@ const productSchema = new mongoose.Schema(
 
 productSchema.index({ status: 1, createdAt: -1 });
 productSchema.index({ store: 1, status: 1 });
+productSchema.index({ publicationStatus: 1, status: 1 });
 
 export type ProductType = InferSchemaType<typeof productSchema>;
 
