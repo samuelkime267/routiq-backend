@@ -14,6 +14,8 @@ import adminRouter from "./routes/admin.route";
 import vendorRouter from "./routes/vendor.route";
 import productRouter from "./routes/product.route";
 import notificationRouter from "./routes/notification.route";
+import orderRouter from "./routes/order.route";
+import shipmentRouter from "./routes/shipment.route";
 import morgan from "morgan";
 const app = express();
 
@@ -43,7 +45,15 @@ app.use(
   }),
 );
 app.use(passport.initialize());
-app.use(express.json());
+app.use(
+  express.json({
+    // Provider webhooks sign the exact request bytes, so keep a raw copy for
+    // HMAC verification before the body is parsed.
+    verify: (req, _res, buffer) => {
+      (req as typeof req & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+    },
+  }),
+);
 app.use(cookieParser());
 
 app.use("/api/v1/auth", authRouter);
@@ -54,6 +64,8 @@ app.use("/api/v1/vendors", vendorRouter);
 app.use("/api/v1/products", productRouter);
 app.use("/api/v1/notifications", notificationRouter);
 app.use("/api/v1/uploads", uploadRouter);
+app.use("/api/v1/orders", orderRouter);
+app.use("/api/v1/shipments", shipmentRouter);
 
 app.use(errorMiddleware);
 

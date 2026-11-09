@@ -21,6 +21,7 @@ import Store from "@/models/store.model";
 import User from "@/models/user.model";
 import { MONGO_URL } from "@/config/env";
 import { platformFeeFor, vendorAmountFor } from "@/config/marketplace";
+import { buildShipmentEventKey } from "@/services/shipments/status";
 
 const DEMO_EMAIL = /@demo\.routiq\.test$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -458,111 +459,203 @@ async function seed() {
   }[] = [];
 
   const orderCount = 190;
+  const orderableStores = approvedStores.filter((store) =>
+    approvedProducts.some(
+      (product) => String(product.store) === String(store._id),
+    ),
+  );
+
+  /** Explicit events that actually happened, never a guessed progression. */
+  const timelineFor = (input: {
+    createdAt: Date;
+    status: string;
+    paymentStatus: string;
+  }) => {
+    const events: Record<string, unknown>[] = [];
+
+    if (input.paymentStatus === "paid" || input.paymentStatus === "refunded") {
+      events.push({
+        type: "vendor_notified",
+        occurredAt: new Date(input.createdAt.getTime() + 15 * 60 * 1000),
+        description: "The vendor was notified that the order was paid.",
+        source: "system",
+      });
+    }
+
+    if (["processing", "shipped", "delivered"].includes(input.status)) {
+      events.push({
+        type: "processing",
+        occurredAt: new Date(input.createdAt.getTime() + 3 * 60 * 60 * 1000),
+        description: "The vendor started preparing the order.",
+        source: "vendor",
+      });
+    }
+
+    return events;
+  };
 
   for (let index = 0; index < orderCount; index += 1) {
-    const store = pick(approvedStores);
-    const catalogue = approvedProducts.filter(
-      (product) => String(product.store) === String(store._id),
-    );
-
-    if (!catalogue.length) continue;
+    if (!orderableStores.length) break;
 
     const customer = pick(customers);
-    const itemCount = randInt(1, 3);
-    const items = Array.from({ length: itemCount }, () => {
-      const product = pick(catalogue);
-      const quantity = randInt(1, 2);
-      const unitPrice = product.price;
-
-      return {
-        product: product._id,
-        name: product.name,
-        quantity,
-        unitPrice,
-        total: unitPrice * quantity,
-      };
-    });
-
     // Bias order dates towards recent days so the charts show momentum.
     const ageDays = Math.pow(random(), 1.6) * 90;
     const createdAt = daysAgo(ageDays);
-    const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-    const shippingFee = pick([1500, 2000, 2500, 3000, 4500]);
-    const total = subtotal + shippingFee;
+    const location = pick(CITIES);
 
-    let status: string;
-    if (ageDays > 12) {
-      status = chance(0.84)
-        ? "delivered"
-        : chance(0.5)
-          ? "cancelled"
-          : "shipped";
-    } else if (ageDays > 4) {
-      status = chance(0.62)
-        ? "delivered"
-        : chance(0.5)
-          ? "shipped"
-          : chance(0.6)
-            ? "processing"
-            : "cancelled";
-    } else {
-      status = pick(["pending", "confirmed", "processing", "shipped", "delivered"]);
-    }
-
-    const expectedDeliveryAt = new Date(
-      createdAt.getTime() + randInt(3, 9) * DAY_MS,
+    // Roughly one checkout in five spans multiple vendors, producing several
+    // vendor sub-orders under one master order.
+    const storeCount = Math.min(
+      chance(0.18) ? randInt(2, 3) : 1,
+      orderableStores.length,
     );
-    const deliveredAt =
-      status === "delivered"
-        ? new Date(createdAt.getTime() + randInt(2, 8) * DAY_MS)
+    const chosenStores = [...orderableStores]
+      .sort(() => random() - 0.5)
+      .slice(0, storeCount);
+    const masterOrderNumber =
+      storeCount > 1
+        ? `RQ-M-${String(100000 + index).padStart(6, "0")}`
         : null;
 
-    let paymentStatus: "pending" | "paid" | "failed" | "refunded";
-    if (status === "cancelled") paymentStatus = "refunded";
-    else if (status === "refunded") paymentStatus = "refunded";
-    else if (status === "pending") paymentStatus = chance(0.65) ? "pending" : "failed";
-    else paymentStatus = "paid";
+    for (const [storeIndex, store] of chosenStores.entries()) {
+      const catalogue = approvedProducts.filter(
+        (product) => String(product.store) === String(store._id),
+      );
 
-    orderDocs.push({
-      orderNumber: `RQ-${100000 + index}`,
-      customer: customer._id,
-      store: store._id,
-      vendor: store.owner,
-      items,
-      subtotal,
-      shippingFee,
-      total,
-      status,
-      paymentStatus,
-      shippingCity: pick(CITIES).city,
-      shippingState: pick(CITIES).state,
-      placedAt: createdAt,
-      expectedDeliveryAt,
-      deliveredAt,
-      cancelledAt:
-        status === "cancelled"
-          ? new Date(createdAt.getTime() + randInt(1, 3) * DAY_MS)
-          : null,
-      createdAt,
-      updatedAt: deliveredAt ?? createdAt,
-    });
+      if (!catalogue.length) continue;
 
-    if (paymentStatus === "paid") {
-      paymentPlans.push({ orderIndex: orderDocs.length - 1, status: "successful" });
-    } else if (paymentStatus === "refunded") {
-      paymentPlans.push({ orderIndex: orderDocs.length - 1, status: "refunded" });
-    } else if (paymentStatus === "failed") {
-      paymentPlans.push({
-        orderIndex: orderDocs.length - 1,
-        status: "failed",
-        failedReason: pick([
-          "Insufficient funds",
-          "Card declined by issuer",
-          "Transaction timed out",
-        ]),
+      const itemCount = randInt(1, 3);
+      const items = Array.from({ length: itemCount }, () => {
+        const product = pick(catalogue);
+        const quantity = randInt(1, 2);
+        const unitPrice = product.price;
+
+        return {
+          product: product._id,
+          name: product.name,
+          quantity,
+          unitPrice,
+          total: unitPrice * quantity,
+        };
       });
-    } else {
-      paymentPlans.push({ orderIndex: orderDocs.length - 1, status: "pending" });
+
+      const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+      const shippingFee = pick([1500, 2000, 2500, 3000, 4500]);
+      const discount = chance(0.22)
+        ? roundTo(subtotal * (0.03 + random() * 0.05), 500)
+        : 0;
+      const total = Math.max(0, subtotal + shippingFee - discount);
+
+      let status: string;
+      if (ageDays > 12) {
+        status = chance(0.84)
+          ? "delivered"
+          : chance(0.5)
+            ? "cancelled"
+            : "shipped";
+      } else if (ageDays > 4) {
+        status = chance(0.62)
+          ? "delivered"
+          : chance(0.5)
+            ? "shipped"
+            : chance(0.6)
+              ? "processing"
+              : "cancelled";
+      } else {
+        status = pick([
+          "pending",
+          "confirmed",
+          "processing",
+          "shipped",
+          "delivered",
+        ]);
+      }
+
+      const expectedDeliveryAt = new Date(
+        createdAt.getTime() + randInt(3, 9) * DAY_MS,
+      );
+      const deliveredAt =
+        status === "delivered"
+          ? new Date(createdAt.getTime() + randInt(2, 8) * DAY_MS)
+          : null;
+
+      let paymentStatus: "pending" | "paid" | "failed" | "refunded";
+      if (status === "cancelled") paymentStatus = "refunded";
+      else if (status === "refunded") paymentStatus = "refunded";
+      else if (status === "pending")
+        paymentStatus = chance(0.65) ? "pending" : "failed";
+      else paymentStatus = "paid";
+
+      const orderNumber = `RQ-${100000 + orderDocs.length}`;
+
+      orderDocs.push({
+        orderNumber,
+        masterOrderNumber,
+        subOrderNumber: masterOrderNumber
+          ? `${masterOrderNumber}-${String.fromCharCode(65 + storeIndex)}`
+          : null,
+        customer: customer._id,
+        store: store._id,
+        vendor: store.owner,
+        items,
+        subtotal,
+        shippingFee,
+        discount,
+        discountCode:
+          discount > 0 ? pick(["ROUTIQ5", "WELCOME10", "NAIJA15"]) : null,
+        total,
+        status,
+        paymentStatus,
+        shippingCity: location.city,
+        shippingState: location.state,
+        shippingAddress: {
+          recipientName: customer.name,
+          phone: `080${randInt(10000000, 99999999)}`,
+          street: `${randInt(1, 120)} ${pick(["Adeola Odeku", "Awolowo", "Ahmadu Bello", "Marina", "Ogunlana"])} Street`,
+          city: location.city,
+          lga: location.lga,
+          state: location.state,
+          country: "Nigeria",
+          landmark: chance(0.4) ? "Near the estate gate" : null,
+        },
+        timeline: timelineFor({ createdAt, status, paymentStatus }),
+        placedAt: createdAt,
+        expectedDeliveryAt,
+        deliveredAt,
+        cancelledAt:
+          status === "cancelled"
+            ? new Date(createdAt.getTime() + randInt(1, 3) * DAY_MS)
+            : null,
+        createdAt,
+        updatedAt: deliveredAt ?? createdAt,
+      });
+
+      if (paymentStatus === "paid") {
+        paymentPlans.push({
+          orderIndex: orderDocs.length - 1,
+          status: "successful",
+        });
+      } else if (paymentStatus === "refunded") {
+        paymentPlans.push({
+          orderIndex: orderDocs.length - 1,
+          status: "refunded",
+        });
+      } else if (paymentStatus === "failed") {
+        paymentPlans.push({
+          orderIndex: orderDocs.length - 1,
+          status: "failed",
+          failedReason: pick([
+            "Insufficient funds",
+            "Card declined by issuer",
+            "Transaction timed out",
+          ]),
+        });
+      } else {
+        paymentPlans.push({
+          orderIndex: orderDocs.length - 1,
+          status: "pending",
+        });
+      }
     }
   }
 
@@ -674,21 +767,92 @@ async function seed() {
     });
   }
 
+  const courierFor = (seed: number) => ({
+    name: pick(["GIG Logistics", "DHL Nigeria", "Kwik Delivery", "Sendbox"]),
+    email: `dispatch${seed}@shipbubble.test`,
+    phone: `090${randInt(10000000, 99999999)}`,
+    trackingCode: `TRK-${randInt(100000000, 999999999)}`,
+    trackingMessage: "Package is on the way.",
+  });
+
+  const eventsFor = (
+    providerOrderId: string,
+    trackingNumber: string,
+    steps: Array<{ status: string; at: Date; message: string }>,
+  ) =>
+    steps.map((step) => ({
+      key: buildShipmentEventKey({
+        providerOrderId,
+        trackingNumber,
+        status: step.status,
+        message: step.message,
+        occurredAt: step.at,
+      }),
+      status: step.status,
+      message: step.message,
+      occurredAt: step.at,
+      source: "provider" as const,
+      receivedAt: step.at,
+    }));
+
   for (const order of orders) {
     if (!["shipped", "delivered"].includes(order.status)) continue;
 
     const failed = order.status === "shipped" && chance(0.16);
     const delivered = order.status === "delivered";
-    const lastEventAt = new Date(
-      new Date(order.createdAt as Date).getTime() +
-        randInt(1, 4) * DAY_MS,
+    const createdAt = new Date(
+      new Date(order.createdAt as Date).getTime() + DAY_MS,
     );
+    const providerOrderId = `SB-${randInt(1000000000, 9999999999)}`;
+    const trackingNumber = `SHB-${randInt(10000000, 99999999)}`;
+    const steps = [
+      {
+        status: "confirmed",
+        at: createdAt,
+        message: "Shipment confirmed by Shipbubble.",
+      },
+      {
+        status: "picked_up",
+        at: new Date(createdAt.getTime() + 6 * 60 * 60 * 1000),
+        message: "Package picked up by the courier.",
+      },
+      {
+        status: "in_transit",
+        at: new Date(createdAt.getTime() + DAY_MS),
+        message: "Package is in transit.",
+      },
+    ];
+
+    if (delivered) {
+      steps.push({
+        status: "completed",
+        at:
+          (order.deliveredAt as Date | null) ??
+          new Date(createdAt.getTime() + 3 * DAY_MS),
+        message: "Package delivered to the customer.",
+      });
+    } else if (failed) {
+      steps.push({
+        status: "delivery_failed",
+        at: new Date(createdAt.getTime() + 2 * DAY_MS),
+        message: "Delivery attempt failed; the customer was unavailable.",
+      });
+    }
+
+    const lastEventAt = steps[steps.length - 1].at;
+    const providerStatus = failed
+      ? "delivery_failed"
+      : delivered
+        ? "completed"
+        : "in_transit";
 
     shipmentDocs.push({
       order: order._id,
-      trackingNumber: `SHB-${randInt(10000000, 99999999)}`,
+      trackingNumber,
+      providerOrderId,
       provider: "shipbubble",
       status: failed ? "failed" : delivered ? "delivered" : "in_transit",
+      providerStatus,
       failureReason: failed
         ? pick([
             "Customer was unavailable at the delivery address",
@@ -699,7 +863,18 @@ async function seed() {
       estimatedDeliveryAt: order.expectedDeliveryAt,
       deliveredAt: delivered ? order.deliveredAt : null,
       lastEventAt,
-      createdAt: lastEventAt,
+      trackingUrl: `https://track.shipbubble.test/${trackingNumber}`,
+      courier: courierFor(randInt(1, 9999)),
+      events: eventsFor(providerOrderId, trackingNumber, steps),
+      lastSyncedAt: lastEventAt,
+      lastSyncAttemptAt: lastEventAt,
+      syncAttempts: steps.length,
+      providerResponse: {
+        order_id: providerOrderId,
+        status: providerStatus,
+        tracking_url: `https://track.shipbubble.test/${trackingNumber}`,
+      },
+      createdAt,
       updatedAt: lastEventAt,
     });
   }
@@ -710,20 +885,53 @@ async function seed() {
     if (!["processing", "confirmed"].includes(order.status)) continue;
     if (!chance(0.25)) continue;
 
-    const lastEventAt = new Date(
+    const createdAt = new Date(
       new Date(order.createdAt as Date).getTime() + DAY_MS,
     );
+    const providerOrderId = `SB-${randInt(1000000000, 9999999999)}`;
+    const trackingNumber = `SHB-${randInt(10000000, 99999999)}`;
+    const steps = [
+      {
+        status: "confirmed",
+        at: createdAt,
+        message: "Shipment confirmed by Shipbubble.",
+      },
+      {
+        status: "picked_up",
+        at: new Date(createdAt.getTime() + 4 * 60 * 60 * 1000),
+        message: "Package picked up by the courier.",
+      },
+      {
+        status: "in_transit",
+        at: new Date(createdAt.getTime() + 10 * 60 * 60 * 1000),
+        message: "Package is in transit.",
+      },
+    ];
+    const lastEventAt = steps[steps.length - 1].at;
 
     shipmentDocs.push({
       order: order._id,
-      trackingNumber: `SHB-${randInt(10000000, 99999999)}`,
+      trackingNumber,
+      providerOrderId,
       provider: "shipbubble",
       status: "in_transit",
+      providerStatus: "in_transit",
       failureReason: null,
       estimatedDeliveryAt: new Date(now.getTime() - randInt(1, 5) * DAY_MS),
       deliveredAt: null,
       lastEventAt,
-      createdAt: lastEventAt,
+      trackingUrl: `https://track.shipbubble.test/${trackingNumber}`,
+      courier: courierFor(randInt(1, 9999)),
+      events: eventsFor(providerOrderId, trackingNumber, steps),
+      lastSyncedAt: lastEventAt,
+      lastSyncAttemptAt: lastEventAt,
+      syncAttempts: steps.length,
+      providerResponse: {
+        order_id: providerOrderId,
+        status: "in_transit",
+        tracking_url: `https://track.shipbubble.test/${trackingNumber}`,
+      },
+      createdAt,
       updatedAt: lastEventAt,
     });
   }

@@ -35,3 +35,12 @@ export const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "";
 export const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "";
 export const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || "";
 export const CLOUDINARY_FOLDER = process.env.CLOUDINARY_FOLDER || "routiq";
+
+/**
+ * Shipbubble is the external logistics provider. The key is only ever read by
+ * the backend; the admin API returns provider statuses and errors, never these
+ * credentials.
+ */
+export const SHIPBUBBLE_API_KEY = process.env.SHIPBUBBLE_API_KEY || "";
+export const SHIPBUBBLE_BASE_URL =
+  process.env.SHIPBUBBLE_BASE_URL || "https://api.shipbubble.com/v1";
