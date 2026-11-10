@@ -1,2 +1,2 @@
 export * from "./changeRole.schema";
-export * from "./listUsers.schema";
+export * from "./adminUsers.schema";

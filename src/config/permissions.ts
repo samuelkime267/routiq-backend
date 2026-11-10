@@ -9,6 +9,7 @@
 export const PERMISSIONS = [
   "dashboard.view",
   "users.view",
+  "users.manage",
   "vendors.view",
   "vendors.manage",
   "stores.view",
@@ -21,6 +22,7 @@ export const PERMISSIONS = [
   "orders.manage",
   "transactions.view",
   "escrow.view",
+  "financials.view",
   "shipments.view",
   "shipments.manage",
   "disputes.view",
@@ -71,6 +73,8 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
   SUPER_ADMIN: PERMISSIONS,
   OPERATIONS_ADMIN: [
     "dashboard.view",
+    "users.view",
+    "users.manage",
     "vendors.view",
     "vendors.manage",
     "stores.view",
@@ -90,10 +94,12 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     "orders.view",
     "transactions.view",
     "escrow.view",
+    "financials.view",
   ],
   SUPPORT_ADMIN: [
     "dashboard.view",
     "users.view",
+    "users.manage",
     "vendors.view",
     "stores.view",
     "orders.view",

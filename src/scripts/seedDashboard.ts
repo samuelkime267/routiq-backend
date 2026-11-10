@@ -182,19 +182,27 @@ const PRODUCTS_BY_CATEGORY: Record<string, { name: string; price: number }[]> = 
 };
 
 const DISPUTE_TYPES = [
-  "non_delivery",
-  "damaged_item",
-  "wrong_item",
-  "refund",
+  "delivery",
+  "product",
+  "order",
   "payment",
+  "vendor",
 ] as const;
 
+const DISPUTE_CATEGORIES: Record<(typeof DISPUTE_TYPES)[number], string> = {
+  delivery: "delivery",
+  product: "product",
+  order: "order",
+  payment: "payment",
+  vendor: "vendor",
+};
+
 const DISPUTE_SUBJECTS: Record<string, string> = {
-  non_delivery: "Order not delivered after the promised date",
-  damaged_item: "Item arrived damaged",
-  wrong_item: "Received the wrong item",
-  refund: "Refund not received",
-  payment: "Payment charged twice",
+  delivery: "Order not delivered after the promised date",
+  product: "Item arrived damaged",
+  order: "Received the wrong item",
+  payment: "Refund not received",
+  vendor: "Vendor was unresponsive after purchase",
 };
 
 const slugify = (value: string) =>
@@ -260,6 +268,7 @@ async function seed() {
       name,
       username: `demo.customer${index + 1}`,
       email: `customer${String(index + 1).padStart(2, "0")}@demo.routiq.test`,
+      phone: `080${randInt(10000000, 99999999)}`,
       role: "user" as const,
       status: "active" as const,
       isEmailVerified: true,
@@ -279,6 +288,7 @@ async function seed() {
       name,
       username: `demo.vendor${index + 1}`,
       email: `vendor${String(index + 1).padStart(2, "0")}@demo.routiq.test`,
+      phone: `080${randInt(10000000, 99999999)}`,
       role: "vendor" as const,
       status: index >= 12 ? ("inactive" as const) : ("active" as const),
       isEmailVerified: true,
@@ -945,8 +955,14 @@ async function seed() {
 
   /* Disputes -------------------------------------------------------- */
   const disputeStatuses = [
-    "open", "open", "investigating", "investigating",
-    "resolved", "resolved", "resolved", "closed",
+    "OPEN",
+    "OPEN",
+    "UNDER_REVIEW",
+    "UNDER_REVIEW",
+    "AWAITING_INFORMATION",
+    "RESOLVED",
+    "RESOLVED",
+    "CLOSED",
   ] as const;
   const disputableOrders = orders.filter((order) =>
     ["delivered", "shipped"].includes(order.status),
@@ -955,13 +971,61 @@ async function seed() {
   const disputeDocs = disputeStatuses.map((status, index) => {
     const order = disputableOrders[(index * 7 + 3) % disputableOrders.length];
     const type = DISPUTE_TYPES[index % DISPUTE_TYPES.length];
+    const category = DISPUTE_CATEGORIES[type];
     const createdAt = new Date(
       new Date(order.createdAt as Date).getTime() + randInt(2, 10) * DAY_MS,
     );
     const resolvedAt =
-      status === "resolved" || status === "closed"
+      status === "RESOLVED" || status === "CLOSED"
         ? new Date(createdAt.getTime() + randInt(1, 4) * DAY_MS)
         : null;
+    const assigned =
+      status === "OPEN" && index % 2 === 0
+        ? null
+        : (admin?._id ?? null);
+    const history: Record<string, unknown>[] = [
+      {
+        action: "created",
+        fromStatus: null,
+        toStatus: "OPEN",
+        note: "Dispute raised from the marketplace.",
+        actor: order.customer,
+        createdAt,
+      },
+    ];
+
+    if (assigned) {
+      history.push({
+        action: "assigned",
+        fromStatus: "OPEN",
+        toStatus: "OPEN",
+        note: "Assigned to the support queue.",
+        actor: admin?._id ?? null,
+        createdAt: new Date(createdAt.getTime() + 2 * 60 * 60 * 1000),
+      });
+    }
+
+    if (status !== "OPEN") {
+      history.push({
+        action: "status_changed",
+        fromStatus: "OPEN",
+        toStatus: status,
+        note: `Moved to ${status.replace(/_/g, " ").toLowerCase()}.`,
+        actor: admin?._id ?? null,
+        createdAt: resolvedAt ?? new Date(createdAt.getTime() + DAY_MS),
+      });
+    }
+
+    if (status === "RESOLVED" || status === "CLOSED") {
+      history.push({
+        action: status === "CLOSED" ? "closed" : "resolved",
+        fromStatus: status === "CLOSED" ? "RESOLVED" : "UNDER_REVIEW",
+        toStatus: status,
+        note: "Resolved after review with the customer and vendor.",
+        actor: admin?._id ?? null,
+        createdAt: resolvedAt ?? createdAt,
+      });
+    }
 
     return {
       reference: `DSP-${String(3000 + index)}`,
@@ -970,6 +1034,7 @@ async function seed() {
       store: order.store,
       vendor: order.vendor,
       type,
+      category,
       status,
       priority: pick(["low", "medium", "high"]),
       subject: DISPUTE_SUBJECTS[type],
@@ -977,6 +1042,39 @@ async function seed() {
       resolution:
         resolvedAt ? "Resolved after review with the customer and vendor." : null,
       resolvedAt,
+      closedAt: status === "CLOSED" ? resolvedAt : null,
+      assignedTo: assigned,
+      assignedBy: assigned ? (admin?._id ?? null) : null,
+      assignedAt: assigned
+        ? new Date(createdAt.getTime() + 2 * 60 * 60 * 1000)
+        : null,
+      informationRequest:
+        status === "AWAITING_INFORMATION"
+          ? "Please share a photo of the item and the delivery note."
+          : null,
+      evidence:
+        index % 3 === 0
+          ? [
+              {
+                label: "Customer photo",
+                url: null,
+                note: "Reference image supplied with the complaint.",
+                addedBy: order.customer,
+                createdAt,
+              },
+            ]
+          : [],
+      notes:
+        assigned && index % 4 === 0
+          ? [
+              {
+                body: "Checked the order timeline and vendor response before assigning.",
+                author: assigned,
+                createdAt,
+              },
+            ]
+          : [],
+      history,
       createdAt,
       updatedAt: resolvedAt ?? createdAt,
     };

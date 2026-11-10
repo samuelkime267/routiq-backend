@@ -30,6 +30,15 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
+    /**
+     * Optional contact number. Customer support and delivery workflows read the
+     * same account record; this is not a second customer identity.
+     */
+    phone: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     password: {
       type: String,
       select: false,

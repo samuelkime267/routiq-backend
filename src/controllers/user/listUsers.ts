@@ -1,37 +1,27 @@
-import { NextFunction, Request, Response } from "express";
-import User from "@/models/user.model";
+import type { NextFunction, Request, Response } from "express";
+import { hasPermission } from "@/config/permissions";
 import { listUsersQuerySchema } from "@/schemas/user";
+import { queryUsers } from "@/services/users/query";
 
+/**
+ * Account directory. Customers, vendors and (for administrators who can see
+ * them) admin accounts all come from the single `User` collection.
+ */
 export const listUsers = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
   try {
-    const { role, status, page, limit } = listUsersQuerySchema.parse(req.query);
-    const filter = {
-      ...(role ? { role } : {}),
-      ...(status ? { status } : {}),
-    };
-    const skip = (page - 1) * limit;
+    const query = listUsersQuerySchema.parse(req.query);
+    const includeAdmins = hasPermission(req.user ?? {}, "admins.view");
 
-    const [users, total] = await Promise.all([
-      User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
-      User.countDocuments(filter),
-    ]);
+    const result = await queryUsers(query, { includeAdmins });
 
     res.status(200).json({
       message: "Users retrieved successfully",
       success: true,
-      data: {
-        users,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      },
+      data: result,
     });
   } catch (error) {
     next(error);

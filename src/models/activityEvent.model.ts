@@ -29,6 +29,7 @@ export const ACTIVITY_SUBJECT_TYPES = [
   "shipment",
   "dispute",
   "admin",
+  "user",
   "platform",
 ] as const;
 export type ActivitySubjectType = (typeof ACTIVITY_SUBJECT_TYPES)[number];
