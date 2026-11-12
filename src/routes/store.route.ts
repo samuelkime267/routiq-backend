@@ -1,5 +1,9 @@
 import { Router } from "express";
 import {
+  listFeaturedStores,
+  listStoreProducts,
+} from "@/controllers/marketplace";
+import {
   approveStore,
   createStore,
   getAdminStore,
@@ -17,6 +21,7 @@ import {
 import {
   authorizeRoles,
   isAuthenticated,
+  optionalAuth,
   requireAdmin,
   requirePermission,
 } from "@/middleware";
@@ -46,13 +51,15 @@ storeRouter.get(
   authorizeRoles("vendor", "admin"),
   getMyStores,
 );
-storeRouter.get(
-  "/",
-  isAuthenticated,
-  requireAdmin,
-  requirePermission("stores.view"),
-  listStores,
-);
+
+// Public marketplace routes. `/featured` and `/:storeId/products` must precede
+// `/:id` so they are not captured as store ids.
+storeRouter.get("/featured", optionalAuth, listFeaturedStores);
+storeRouter.get("/:storeId/products", optionalAuth, listStoreProducts);
+
+// Dual-mode: administrators receive the moderation console response, while
+// anonymous and customer requests receive only public storefronts.
+storeRouter.get("/", optionalAuth, listStores);
 
 // Administrative review console. Every route is permission-gated and the
 // controller re-checks the specific action permission before mutating state.
@@ -111,7 +118,7 @@ storeRouter.post(
   reactivateStore,
 );
 
-storeRouter.get("/:id", isAuthenticated, getStore);
+storeRouter.get("/:id", optionalAuth, getStore);
 storeRouter.patch(
   "/:id",
   isAuthenticated,

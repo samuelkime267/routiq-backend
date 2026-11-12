@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { permissionsForAdmin } from "@/config/permissions";
 import { actorFromUser, recordActivity } from "@/lib/activity";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
 import User from "@/models/user.model";
 import type { AdminStatusSchemaType } from "@/schemas/admin";
 import {
@@ -16,12 +17,16 @@ export const adminUpdateStatus = async (
 ) => {
   try {
     const actor = req.user!;
-    const { adminStatus } = req.body as AdminStatusSchemaType;
-    const target = await User.findById(req.params.id);
+    const { adminStatus, reason } = req.body as AdminStatusSchemaType;
+    const target = await User.findById(
+      req.params.adminId ?? req.params.id,
+    );
 
     if (!target || target.role !== "admin" || !target.adminRole) {
       throw createError("Admin not found", 404);
     }
+
+    const previousStatus = target.adminStatus;
 
     const activeSuperAdmins = await User.countDocuments({
       role: "admin",
@@ -48,6 +53,18 @@ export const adminUpdateStatus = async (
       subject: { type: "admin", id: target._id, label: target.name },
       href: `/admins?search=${encodeURIComponent(target.email)}`,
       metadata: { adminStatus },
+    });
+
+    await recordAudit({
+      actor: auditActorFromUser(actor),
+      action: "admin.status_changed",
+      entityType: "admin",
+      entityId: target._id,
+      entityLabel: target.name,
+      previousState: { adminStatus: previousStatus },
+      newState: { adminStatus },
+      reason: reason ?? null,
+      request: requestMetadata(req),
     });
 
     res.status(200).json({

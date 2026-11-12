@@ -1,5 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { NextFunction, Request, Response } from "express";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
+import AdminInvitation from "@/models/adminInvitation.model";
 import User from "@/models/user.model";
 import type { UpdatePasswordSchemaType } from "@/schemas/auth";
 import { createError } from "@/utils/createError";
@@ -42,13 +44,37 @@ export const adminResetPassword = async (
     user.otpAttempts = 0;
     user.isEmailVerified = true;
 
+    const previousStatus = user.adminStatus;
+    const acceptedInvitation = user.adminStatus === "INVITED";
+
     // Accepting an invitation activates the account. Active admins keep their
     // current lifecycle state when they reset a forgotten password.
-    if (user.adminStatus === "INVITED") {
+    if (acceptedInvitation) {
       Object.assign(user, syncAdminStatusFields("ACTIVE"));
     }
 
     await user.save();
+
+    if (acceptedInvitation) {
+      await AdminInvitation.updateMany(
+        { admin: user._id, status: "PENDING" },
+        { $set: { status: "ACCEPTED", acceptedAt: new Date() } },
+      );
+    }
+
+    await recordAudit({
+      actor: auditActorFromUser(user),
+      action: acceptedInvitation
+        ? "admin.invitation_accepted"
+        : "admin.password_reset",
+      entityType: "admin",
+      entityId: user._id,
+      entityLabel: user.name,
+      previousState: { adminStatus: previousStatus },
+      newState: { adminStatus: user.adminStatus },
+      metadata: { via: "reset_password" },
+      request: requestMetadata(req),
+    });
 
     res.status(200).json({
       message: "Password reset successfully",

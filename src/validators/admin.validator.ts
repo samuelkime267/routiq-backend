@@ -1,18 +1,21 @@
 import type { NextFunction, Request, Response } from "express";
 import type { ZodType } from "zod";
 import {
+  acceptAdminInvitationSchema,
+  adminInvitationActionSchema,
   adminInviteSchema,
   adminLoginSchema,
   adminPermissionsSchema,
   adminRoleSchema,
   adminStatusSchema,
+  updateAdminProfileSchema,
 } from "@/schemas/admin";
 import { updatePasswordSchema } from "@/schemas/auth";
 
 const parseBody =
   (schema: ZodType) => (req: Request, _res: Response, next: NextFunction) => {
     try {
-      req.body = schema.parse(req.body);
+      req.body = schema.parse(req.body ?? {});
       next();
     } catch (error) {
       next(error);
@@ -25,3 +28,10 @@ export const adminRoleValidator = parseBody(adminRoleSchema);
 export const adminStatusValidator = parseBody(adminStatusSchema);
 export const adminPermissionsValidator = parseBody(adminPermissionsSchema);
 export const adminResetPasswordValidator = parseBody(updatePasswordSchema);
+export const acceptAdminInvitationValidator = parseBody(
+  acceptAdminInvitationSchema,
+);
+export const adminInvitationActionValidator = parseBody(
+  adminInvitationActionSchema,
+);
+export const adminProfileValidator = parseBody(updateAdminProfileSchema);

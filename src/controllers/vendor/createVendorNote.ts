@@ -7,6 +7,7 @@ import type { CreateVendorNoteSchemaType } from "@/schemas/vendor";
 import { assertPermission } from "@/utils/adminAccess";
 import { createError } from "@/utils";
 import { actorFromUser, recordActivity } from "@/lib/activity";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
 
 export const createVendorNote = async (
   req: Request,
@@ -49,6 +50,19 @@ export const createVendorNote = async (
       subject: { type: "vendor", id: vendor._id, label: vendor.name },
       href: `/vendors/${String(vendor._id)}`,
       metadata: { noteId: String(note._id), storeId: storeId ?? null },
+    });
+
+    await recordAudit({
+      actor: auditActorFromUser(admin),
+      action: "vendor.note_added",
+      entityType: "vendor",
+      entityId: vendor._id,
+      entityLabel: vendor.name,
+      previousState: null,
+      newState: { noteId: String(note._id), storeId: storeId ?? null },
+      reason: null,
+      metadata: { bodyLength: body.length },
+      request: requestMetadata(req),
     });
 
     await note.populate("author", "name email adminRole");

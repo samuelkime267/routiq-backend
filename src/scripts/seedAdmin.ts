@@ -10,7 +10,7 @@ import {
 const resolveAdminRole = (): AdminRole => {
   const requested = (process.env.ADMIN_ROLE || "SUPER_ADMIN").trim();
 
-  if (!ADMIN_ROLES.includes(requested as AdminRole)) {
+  if (!(ADMIN_ROLES as readonly string[]).includes(requested)) {
     throw new Error(
       `ADMIN_ROLE must be one of: ${ADMIN_ROLES.join(", ")}`,
     );

@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import Store, { STORE_STATUSES } from "@/models/store.model";
+import { publicStoreQuerySchema } from "@/schemas/marketplace";
 import { listStoresQuerySchema } from "@/schemas/store";
+import { queryPublicStores } from "@/services/marketplace/stores";
+import { assertPermission, isActiveAdmin } from "@/utils";
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -11,6 +14,22 @@ export const listStores = async (
   next: NextFunction,
 ) => {
   try {
+    // Administrators keep the moderation console contract. Public callers get
+    // only approved stores owned by active vendors.
+    if (isActiveAdmin(req.user)) {
+      assertPermission(req.user, ["stores.view"] as const);
+    } else {
+      const query = publicStoreQuerySchema.parse(req.query);
+      const result = await queryPublicStores(query);
+
+      res.status(200).json({
+        message: "Stores retrieved successfully",
+        success: true,
+        data: result,
+      });
+      return;
+    }
+
     const { status, search, category, sortBy, sortOrder, page, limit } =
       listStoresQuerySchema.parse(req.query);
 

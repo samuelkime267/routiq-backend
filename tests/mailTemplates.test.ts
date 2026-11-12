@@ -92,9 +92,20 @@ describe("email templates", () => {
       expect(html).toContain("&lt;Admin&gt;");
     });
 
-    it("mentions the 10 minute expiry", () => {
-      expect(html).toContain("10 minutes");
-      expect(text).toContain("10 minutes");
+    it("mentions the seven day expiry", () => {
+      expect(html).toContain("7 days");
+      expect(text).toContain("7 days");
+    });
+
+    it("supports a custom expiry window", () => {
+      const custom = adminInvitationTemplate({
+        name: "Ada <Admin>",
+        role: "OPERATIONS_ADMIN",
+        link,
+        expiresInHours: 24,
+      });
+
+      expect(custom.text).toContain("24 hours");
     });
   });
 

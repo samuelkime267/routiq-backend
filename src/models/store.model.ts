@@ -198,6 +198,15 @@ const storeSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    /**
+     * Curated marketplace placement. An unapproved or suspended store is never
+     * public even when featured.
+     */
+    featured: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     status: {
       type: String,
       enum: [...STORE_STATUSES],
@@ -281,6 +290,7 @@ const storeSchema = new mongoose.Schema(
 
 storeSchema.index({ location: "2dsphere" });
 storeSchema.index({ owner: 1, createdAt: -1 });
+storeSchema.index({ featured: 1, createdAt: -1 });
 
 export type StoreType = InferSchemaType<typeof storeSchema>;
 

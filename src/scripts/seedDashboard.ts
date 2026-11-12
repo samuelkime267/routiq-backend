@@ -331,6 +331,7 @@ async function seed() {
       description: `${seedStore.name} sells curated ${seedStore.category.toLowerCase()} products across Nigeria.`,
       businessType: seedStore.businessType,
       category: seedStore.category,
+      featured: status === "approved" && index < 4,
       status,
       rejectionReason:
         status === "rejected" ? "CAC certificate did not match the business name." : null,
@@ -403,6 +404,9 @@ async function seed() {
             : null;
 
       productIndex += 1;
+      const price = roundTo(template.price * (0.85 + random() * 0.3), 500);
+      const onSale = status === "approved" && chance(0.35);
+
       productDocs.push({
         store: store._id,
         vendor: store.owner,
@@ -411,10 +415,13 @@ async function seed() {
         sku: `SKU-${String(productIndex).padStart(4, "0")}`,
         category: store.category,
         description: `${template.name} from ${store.name}.`,
-        price: roundTo(template.price * (0.85 + random() * 0.3), 500),
-        compareAtPrice: null,
+        price,
+        compareAtPrice: onSale
+          ? roundTo(price * (1.15 + random() * 0.35), 500)
+          : null,
         stock: randInt(0, 120),
         images: [],
+        featured: status === "approved" && index === 0 && chance(0.4),
         status,
         publicationStatus: status === "approved" ? "published" : "unpublished",
         rejectionReason:

@@ -240,18 +240,24 @@ describe("admin schemas", () => {
     expect(adminLoginSchema.safeParse({ email: "nope" }).success).toBe(false);
   });
 
-  it("accepts every documented admin role", () => {
+  it("accepts documented and custom role keys but rejects malformed keys", () => {
     for (const adminRole of [
       "SUPER_ADMIN",
       "OPERATIONS_ADMIN",
       "FINANCE_ADMIN",
       "SUPPORT_ADMIN",
       "CATALOG_ADMIN",
+      "CUSTOM_SUPPORT",
     ]) {
       expect(adminRoleSchema.safeParse({ adminRole }).success).toBe(true);
     }
 
-    expect(adminRoleSchema.safeParse({ adminRole: "OWNER" }).success).toBe(
+    // Registry membership is checked by the controller; the schema rejects
+    // malformed keys that could never be stored as a role.
+    expect(adminRoleSchema.safeParse({ adminRole: "SUPER ADMIN" }).success).toBe(
+      false,
+    );
+    expect(adminRoleSchema.safeParse({ adminRole: "1ADMIN" }).success).toBe(
       false,
     );
   });

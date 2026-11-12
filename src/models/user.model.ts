@@ -1,6 +1,5 @@
 import mongoose, { InferSchemaType, HydratedDocument } from "mongoose";
 import {
-  ADMIN_ROLES,
   ADMIN_STATUSES,
   PERMISSIONS,
 } from "@/config/permissions";
@@ -114,8 +113,9 @@ const userSchema = new mongoose.Schema(
      * fields below hold admin-specific state.
      */
     adminRole: {
+      // Role keys are validated against the runtime role registry so custom
+      // roles can be created without a schema migration.
       type: String,
-      enum: ADMIN_ROLES,
       default: null,
     },
     adminStatus: {

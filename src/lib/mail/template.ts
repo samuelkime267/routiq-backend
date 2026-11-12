@@ -222,20 +222,26 @@ export const adminInvitationTemplate = ({
   name,
   role,
   link,
+  expiresInHours = 168,
 }: {
   name: string;
   role: string;
   link: string;
+  expiresInHours?: number;
 }): EmailContent => {
   const safeName = escapeHtml(name);
   const safeRole = escapeHtml(roleLabel(role));
+  const expiryLabel =
+    expiresInHours >= 48
+      ? `${Math.round(expiresInHours / 24)} days`
+      : `${expiresInHours} hours`;
 
   const body = `
     ${paragraph(`Hi ${safeName}, you have been invited to the Routiq admin console as a <strong>${safeRole}</strong>.`)}
     ${paragraph("Set a password to activate your account. Admin accounts are separate from customer and vendor accounts, and access is limited to the permissions assigned to your role.")}
     ${button(link, "Activate my admin account")}
     ${fallbackLink(link)}
-    ${paragraph("This invitation expires in 10 minutes and can only be used once.")}
+    ${paragraph(`This invitation expires in ${expiryLabel} and can only be used once.`)}
     ${noteBox("If you were not expecting this invitation, you can ignore this email. Your account will stay inactive.")}
   `;
 
@@ -257,7 +263,7 @@ export const adminInvitationTemplate = ({
       "",
       link,
       "",
-      "This invitation expires in 10 minutes and can only be used once.",
+      `This invitation expires in ${expiryLabel} and can only be used once.`,
       "",
       "If you were not expecting this invitation, you can ignore this email.",
       "",

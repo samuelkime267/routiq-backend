@@ -4,6 +4,7 @@ import StoreReview, {
   type StoreReviewAction,
 } from "@/models/storeReview.model";
 import { actorFromUser, recordActivity } from "@/lib/activity";
+import { auditActorFromUser, recordAudit } from "@/lib/audit";
 import { createError } from "@/utils";
 import { notifyVendor } from "@/services/notifications/notify";
 
@@ -59,6 +60,14 @@ const ACTIVITY_TYPES = {
   approve: "store_approved",
   reject: "store_rejected",
 } as const;
+
+const AUDIT_ACTIONS: Record<StoreAction, string> = {
+  approve: "store.approved",
+  reject: "store.rejected",
+  request_information: "store.information_requested",
+  suspend: "store.suspended",
+  reactivate: "store.reactivated",
+};
 
 export interface StoreActionActor {
   _id?: unknown;
@@ -277,6 +286,22 @@ export async function performStoreAction({
       reason: reason ?? null,
       message: message ?? null,
     },
+  });
+
+  await recordAudit({
+    actor: auditActorFromUser(actor),
+    action: AUDIT_ACTIONS[action],
+    entityType: "store",
+    entityId: store._id,
+    entityLabel: store.name,
+    previousState: { status: fromStatus },
+    newState: {
+      status: toStatus,
+      reason: reason ?? null,
+      message: message ?? null,
+    },
+    reason: reason ?? null,
+    metadata: { action, note: note ?? null },
   });
 
   await notifyVendor({

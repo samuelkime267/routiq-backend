@@ -21,6 +21,7 @@ import {
 import {
   adminLoginValidator,
   adminResetPasswordValidator,
+  acceptAdminInvitationValidator,
 } from "@/validators/admin.validator";
 import {
   adminLogin,
@@ -29,6 +30,7 @@ import {
   adminMe,
   adminForgotPassword,
   adminResetPassword,
+  adminAcceptInvitation,
 } from "@/controllers/admin";
 import { isValidRefreshToken, isAuthenticated, requireAdmin } from "@/middleware";
 
@@ -76,6 +78,11 @@ authRouter.post(
   "/admin/reset-password/:token",
   adminResetPasswordValidator,
   adminResetPassword,
+);
+authRouter.post(
+  "/admin/accept-invitation",
+  acceptAdminInvitationValidator,
+  adminAcceptInvitation,
 );
 
 export default authRouter;

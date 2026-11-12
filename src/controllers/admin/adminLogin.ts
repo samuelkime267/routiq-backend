@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { NextFunction, Request, Response } from "express";
 import { permissionsForAdmin } from "@/config/permissions";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
 import User from "@/models/user.model";
 import type { AdminLoginSchemaType } from "@/schemas/admin";
 import { createError } from "@/utils/createError";
@@ -54,6 +55,17 @@ export const adminLogin = async (
 
     user.lastLoginAt = new Date();
     await user.save();
+
+    await recordAudit({
+      actor: auditActorFromUser(user),
+      action: "admin.login",
+      entityType: "admin",
+      entityId: user._id,
+      entityLabel: user.name,
+      previousState: null,
+      newState: { lastLoginAt: user.lastLoginAt.toISOString() },
+      request: requestMetadata(req),
+    });
 
     const token = generateJwtToken(user._id);
 

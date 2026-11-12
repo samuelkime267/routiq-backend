@@ -4,6 +4,8 @@ import {
   type AdminStatus,
   type Permission,
   hasEveryPermission,
+  permissionsForAdmin,
+  roleDefinitionFor,
 } from "@/config/permissions";
 import type { UserStatus } from "@/models/user.model";
 import { createError } from "@/utils/createError";
@@ -112,6 +114,59 @@ const sameId = (left: AdminSubject, right: AdminSubject) =>
   String(left._id) === String(right._id);
 
 /**
+ * A non-Super Admin may only grant the permissions they already hold. This is
+ * the core privilege-escalation guard for role definitions and per-admin
+ * overrides.
+ */
+export const assertCanGrantPermissions = (
+  actor: AdminSubject,
+  permissions: readonly Permission[],
+) => {
+  const admin = assertPermission(actor, ["roles.manage"]);
+
+  if (admin.adminRole === "SUPER_ADMIN") return admin;
+
+  const held = new Set(permissionsForAdmin(admin));
+  const missing = permissions.filter((permission) => !held.has(permission));
+
+  if (missing.length) {
+    throw createError(
+      "You cannot grant permissions you do not hold yourself",
+      403,
+    );
+  }
+
+  return admin;
+};
+
+const assertRoleWithinAuthority = (
+  actor: AdminSubject,
+  role: AdminRole,
+) => {
+  const definition = roleDefinitionFor(role);
+
+  if (!definition) {
+    throw createError("Select a valid administrator role", 400);
+  }
+
+  if (actor.adminRole !== "SUPER_ADMIN") {
+    const held = new Set(permissionsForAdmin(actor));
+    const excessive = definition.permissions.filter(
+      (permission) => !held.has(permission),
+    );
+
+    if (excessive.length) {
+      throw createError(
+        "You cannot assign a role with permissions you do not hold yourself",
+        403,
+      );
+    }
+  }
+
+  return definition;
+};
+
+/**
  * Only a Super Admin may hand out the SUPER_ADMIN role. This guard runs after
  * the `roles.manage` permission check, so a grant of `roles.manage` alone can
  * never be used to escalate to full platform access.
@@ -125,6 +180,8 @@ export const assertCanAssignAdminRole = (
   if (nextRole === "SUPER_ADMIN" && actor.adminRole !== "SUPER_ADMIN") {
     throw createError("Only a Super Admin can assign the SUPER_ADMIN role", 403);
   }
+
+  assertRoleWithinAuthority(actor, nextRole);
 };
 
 export const assertCanInviteAdmin = (
@@ -139,6 +196,8 @@ export const assertCanInviteAdmin = (
       403,
     );
   }
+
+  assertRoleWithinAuthority(actor, invitedRole);
 };
 
 export const assertCanManageAdmin = (
@@ -192,7 +251,6 @@ export const assertCanModifyPermissions = (
     throw createError("You cannot modify your own permissions", 400);
   }
 };
-
 /**
  * Keeps the legacy `status` field in step with the admin lifecycle so the
  * shared `isAuthenticated` / refresh-token middleware rejects inactive admins.

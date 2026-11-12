@@ -92,6 +92,15 @@ const productSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    /**
+     * Curated marketplace placement. Independent of moderation: an unapproved
+     * or unpublished product is never public even when featured.
+     */
+    featured: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     status: {
       type: String,
       enum: [...PRODUCT_STATUSES],
@@ -147,6 +156,7 @@ const productSchema = new mongoose.Schema(
 productSchema.index({ status: 1, createdAt: -1 });
 productSchema.index({ store: 1, status: 1 });
 productSchema.index({ publicationStatus: 1, status: 1 });
+productSchema.index({ featured: 1, createdAt: -1 });
 
 export type ProductType = InferSchemaType<typeof productSchema>;
 

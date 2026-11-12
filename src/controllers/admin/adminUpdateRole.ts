@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { permissionsForAdmin } from "@/config/permissions";
 import { actorFromUser, recordActivity } from "@/lib/activity";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
 import User from "@/models/user.model";
 import type { AdminRoleSchemaType } from "@/schemas/admin";
 import {
@@ -33,8 +34,10 @@ export const adminUpdateRole = async (
 ) => {
   try {
     const actor = req.user!;
-    const { adminRole } = req.body as AdminRoleSchemaType;
-    const target = await findAdmin(String(req.params.id));
+    const { adminRole, reason } = req.body as AdminRoleSchemaType;
+    const target = await findAdmin(
+      String(req.params.adminId ?? req.params.id),
+    );
 
     assertCanAssignAdminRole(actor, adminRole);
     assertCanManageAdmin(actor, target);
@@ -46,6 +49,8 @@ export const adminUpdateRole = async (
     ) {
       throw createError("At least one active Super Admin is required", 400);
     }
+
+    const previousRole = target.adminRole;
 
     target.adminRole = adminRole;
 
@@ -67,6 +72,18 @@ export const adminUpdateRole = async (
       subject: { type: "admin", id: target._id, label: target.name },
       href: `/admins?search=${encodeURIComponent(target.email)}`,
       metadata: { adminRole },
+    });
+
+    await recordAudit({
+      actor: auditActorFromUser(actor),
+      action: "admin.role_changed",
+      entityType: "admin",
+      entityId: target._id,
+      entityLabel: target.name,
+      previousState: { adminRole: previousRole },
+      newState: { adminRole },
+      reason: reason ?? null,
+      request: requestMetadata(req),
     });
 
     res.status(200).json({

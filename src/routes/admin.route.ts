@@ -1,10 +1,17 @@
 import { Router } from "express";
 import {
+  adminInvitationDetail,
+  adminInvitationList,
+  adminInvitationResend,
+  adminInvitationRevoke,
   adminInvite,
   adminList,
   adminUpdatePermissions,
   adminUpdateRole,
   adminUpdateStatus,
+  getAdmin,
+  getAdminProfile,
+  updateAdminProfile,
 } from "@/controllers/admin";
 import {
   dashboardCharts,
@@ -14,8 +21,10 @@ import {
   dashboardRecentActivity,
 } from "@/controllers/dashboard";
 import {
+  adminInvitationActionValidator,
   adminInviteValidator,
   adminPermissionsValidator,
+  adminProfileValidator,
   adminRoleValidator,
   adminStatusValidator,
 } from "@/validators/admin.validator";
@@ -56,13 +65,49 @@ adminRouter.get(
   dashboardRecentActivity,
 );
 
+// Own profile (declared before `/:id`).
+adminRouter.get("/admins/me", getAdminProfile);
+adminRouter.patch("/admins/me", adminProfileValidator, updateAdminProfile);
+
 adminRouter.get("/admins", requirePermission("admins.view"), adminList);
+
+// Legacy invite alias kept for the existing console, plus the versioned
+// invitation resource used by the new screens.
 adminRouter.post(
   "/admins/invite",
   requirePermission("admins.invite"),
   adminInviteValidator,
   adminInvite,
 );
+adminRouter.get(
+  "/admins/invitations",
+  requirePermission("admins.view"),
+  adminInvitationList,
+);
+adminRouter.post(
+  "/admins/invitations",
+  requirePermission("admins.invite"),
+  adminInviteValidator,
+  adminInvite,
+);
+adminRouter.get(
+  "/admins/invitations/:invitationId",
+  requirePermission("admins.view"),
+  adminInvitationDetail,
+);
+adminRouter.post(
+  "/admins/invitations/:invitationId/resend",
+  requirePermission("admins.invite"),
+  adminInvitationResend,
+);
+adminRouter.post(
+  "/admins/invitations/:invitationId/revoke",
+  requirePermission("admins.manage"),
+  adminInvitationActionValidator,
+  adminInvitationRevoke,
+);
+
+adminRouter.get("/admins/:id", requirePermission("admins.view"), getAdmin);
 adminRouter.patch(
   "/admins/:id/role",
   requirePermission("roles.manage"),

@@ -23,6 +23,7 @@ import type {
 import { createError } from "@/utils";
 import type { AdminSubject } from "@/utils/adminAccess";
 import { actorFromUser, recordActivity } from "@/lib/activity";
+import { auditActorFromUser, recordAudit } from "@/lib/audit";
 
 const isObjectId = (value?: string | null) =>
   Boolean(value && /^[a-f\d]{24}$/i.test(value));
@@ -374,6 +375,26 @@ function activityFor(
   });
 }
 
+function auditFor(
+  dispute: DisputeDocument,
+  admin: AdminSubject,
+  action: string,
+  previousState: Record<string, unknown>,
+  newState: Record<string, unknown>,
+  reason?: string | null,
+) {
+  return recordAudit({
+    actor: auditActorFromUser(admin),
+    action,
+    entityType: "dispute",
+    entityId: dispute._id,
+    entityLabel: dispute.reference,
+    previousState,
+    newState,
+    reason: reason ?? null,
+  });
+}
+
 export async function assignDispute(
   disputeId: string,
   admin: AdminSubject,
@@ -422,6 +443,19 @@ export async function assignDispute(
       previousAssignee,
       note: input.note ?? null,
     },
+  );
+
+  await auditFor(
+    dispute,
+    admin,
+    "dispute.assigned",
+    { assignedTo: previousAssignee },
+    {
+      assignedTo: String(target._id),
+      assignedToName: target.name,
+      note: input.note ?? null,
+    },
+    input.note ?? null,
   );
 
   return dispute;
@@ -507,6 +541,21 @@ export async function updateDisputeStatus(
     },
   );
 
+  await auditFor(
+    dispute,
+    admin,
+    to === "RESOLVED" ? "dispute.resolved" : "dispute.status_changed",
+    { status: from },
+    {
+      status: to,
+      message: input.message ?? null,
+      resolution: input.resolution ?? null,
+      note: input.note ?? null,
+      escrowModified: false,
+    },
+    input.note ?? null,
+  );
+
   return dispute;
 }
 
@@ -540,6 +589,15 @@ export async function addDisputeNote(
     "Internal note added",
     `An internal note was added to ${dispute.reference}.`,
     { noteId: notes[notes.length - 1]?._id ?? null },
+  );
+
+  await auditFor(
+    dispute,
+    admin,
+    "dispute.note_added",
+    {},
+    { noteId: notes[notes.length - 1]?._id ?? null },
+    input.body,
   );
 
   return dispute;
@@ -587,6 +645,20 @@ export async function resolveDispute(
       note: input.note ?? null,
       escrowModified: false,
     },
+  );
+
+  await auditFor(
+    dispute,
+    admin,
+    "dispute.resolved",
+    { status: from },
+    {
+      status: "RESOLVED",
+      resolution: input.resolution,
+      note: input.note ?? null,
+      escrowModified: false,
+    },
+    input.resolution,
   );
 
   return dispute;

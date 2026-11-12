@@ -1,8 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
 import Product from "@/models/product.model";
 import ProductReview from "@/models/productReview.model";
+import { getPublicProduct } from "@/services/marketplace/products";
 import { PRODUCT_POPULATE } from "@/services/products/query";
-import { createError } from "@/utils";
+import { assertPermission, createError, isActiveAdmin } from "@/utils";
 
 export const getProduct = async (
   req: Request,
@@ -10,7 +11,20 @@ export const getProduct = async (
   next: NextFunction,
 ) => {
   try {
-    const product = await Product.findById(req.params.productId).populate([
+    if (!isActiveAdmin(req.user)) {
+      const result = await getPublicProduct(String(req.params.productId));
+
+      res.status(200).json({
+        message: "Product retrieved successfully",
+        success: true,
+        data: result,
+      });
+      return;
+    }
+
+    assertPermission(req.user, ["products.view"] as const);
+
+    const product = await Product.findById(String(req.params.productId)).populate([
       ...PRODUCT_POPULATE,
     ]);
 

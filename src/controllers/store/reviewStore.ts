@@ -3,6 +3,7 @@ import Store from "@/models/store.model";
 import { ReviewStoreSchemaType } from "@/schemas/store";
 import { createError } from "@/utils";
 import { actorFromUser, recordActivity } from "@/lib/activity";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
 import { assertPermission } from "@/utils/adminAccess";
 import { recordStoreHistory } from "@/services/store/history";
 import { notifyVendor } from "@/services/notifications/notify";
@@ -113,6 +114,21 @@ export const reviewStore = async (
         status,
         rejectionReason: store.rejectionReason ?? null,
       },
+    });
+
+    await recordAudit({
+      actor: auditActorFromUser(admin),
+      action: `store.${status === "approved" ? "approved" : status === "rejected" ? "rejected" : "suspended"}`,
+      entityType: "store",
+      entityId: store._id,
+      entityLabel: store.name,
+      previousState: { status: fromStatus },
+      newState: {
+        status,
+        rejectionReason: store.rejectionReason ?? null,
+      },
+      reason: rejectionReason ?? null,
+      request: requestMetadata(req),
     });
 
     res.status(200).json({

@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { actorFromUser } from "@/lib/activity";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
 import { cancelShipmentSchema } from "@/schemas/shipment";
 import { cancelShipment } from "@/services/shipments/sync";
 
@@ -15,6 +16,18 @@ export const cancelShipmentAdmin = async (
       { reason: reason ?? null },
       actorFromUser(req.user),
     );
+
+    await recordAudit({
+      actor: auditActorFromUser(req.user),
+      action: "shipment.cancelled",
+      entityType: "shipment",
+      entityId: shipment._id,
+      entityLabel: shipment.trackingNumber,
+      previousState: null,
+      newState: { status: shipment.status, reason: reason ?? null },
+      reason: reason ?? null,
+      request: requestMetadata(req),
+    });
 
     res.status(200).json({
       message: "Shipment cancelled successfully",

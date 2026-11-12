@@ -7,6 +7,7 @@ import ProductReview, {
   type ProductReviewAction,
 } from "@/models/productReview.model";
 import { actorFromUser, recordActivity } from "@/lib/activity";
+import { auditActorFromUser, recordAudit } from "@/lib/audit";
 import { createError } from "@/utils";
 import { notifyVendor } from "@/services/notifications/notify";
 
@@ -58,6 +59,13 @@ const ACTIVITY_TYPES = {
   suspend: "product_suspended",
   restore: "product_restored",
 } as const;
+
+const AUDIT_ACTIONS: Record<ProductAction, string> = {
+  approve: "product.approved",
+  reject: "product.rejected",
+  suspend: "product.suspended",
+  restore: "product.restored",
+};
 
 export interface ProductActionActor {
   _id?: unknown;
@@ -220,6 +228,23 @@ export async function performProductAction({
       note: note ?? null,
       publicationStatus: product.publicationStatus ?? "unpublished",
     },
+  });
+
+  await recordAudit({
+    actor: auditActorFromUser(actor),
+    action: AUDIT_ACTIONS[action],
+    entityType: "product",
+    entityId: product._id,
+    entityLabel: product.name,
+    previousState: { status: fromStatus },
+    newState: {
+      status: toStatus,
+      reason: reason ?? null,
+      note: note ?? null,
+      publicationStatus: product.publicationStatus ?? "unpublished",
+    },
+    reason: reason ?? null,
+    metadata: { action },
   });
 
   await notifyVendor({

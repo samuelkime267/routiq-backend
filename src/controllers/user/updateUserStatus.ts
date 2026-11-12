@@ -4,6 +4,7 @@ import type { UpdateUserStatusInput } from "@/schemas/user";
 import { createError } from "@/utils";
 import { assertPermission } from "@/utils/adminAccess";
 import { actorFromUser, recordActivity } from "@/lib/activity";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
 import { notifyVendor } from "@/services/notifications/notify";
 
 /**
@@ -62,6 +63,19 @@ export const updateUserStatus = async (
         toStatus: user.status,
         reason: reason ?? null,
       },
+    });
+
+    await recordAudit({
+      actor: auditActorFromUser(admin),
+      action: "user.status_changed",
+      entityType: "user",
+      entityId: user._id,
+      entityLabel: user.name,
+      previousState: { status: previousStatus },
+      newState: { status: user.status, reason: reason ?? null },
+      reason: reason ?? null,
+      metadata: { accountRole: user.role },
+      request: requestMetadata(req),
     });
 
     if (user.role === "vendor") {

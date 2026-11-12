@@ -4,6 +4,7 @@ import type { VendorStatusSchemaType } from "@/schemas/vendor";
 import { assertPermission } from "@/utils/adminAccess";
 import { createError } from "@/utils";
 import { actorFromUser, recordActivity } from "@/lib/activity";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
 import { notifyVendor } from "@/services/notifications/notify";
 
 export const updateVendorStatus = async (
@@ -50,6 +51,18 @@ export const updateVendorStatus = async (
       subject: { type: "vendor", id: vendor._id, label: vendor.name },
       href: `/vendors/${String(vendor._id)}`,
       metadata: { fromStatus: previousStatus, toStatus: vendor.status, reason },
+    });
+
+    await recordAudit({
+      actor: auditActorFromUser(admin),
+      action: "vendor.status_changed",
+      entityType: "vendor",
+      entityId: vendor._id,
+      entityLabel: vendor.name,
+      previousState: { status: previousStatus },
+      newState: { status: vendor.status, reason: reason ?? null },
+      reason: reason ?? null,
+      request: requestMetadata(req),
     });
 
     await notifyVendor({

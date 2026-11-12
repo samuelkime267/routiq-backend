@@ -1,7 +1,8 @@
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import User from "@/models/user.model";
 import { ChangeUserRoleSchemaType } from "@/schemas/user";
 import { assertActiveAdmin } from "@/utils/adminAccess";
+import { auditActorFromUser, recordAudit, requestMetadata } from "@/lib/audit";
 import { createError } from "@/utils";
 
 export const changeUserRole = async (
@@ -20,6 +21,7 @@ export const changeUserRole = async (
     if (!user) throw createError("User not found", 404);
 
     const { role } = req.body as ChangeUserRoleSchemaType;
+    const previousRole = user.role;
 
     if (role === "admin") {
       throw createError(
@@ -46,6 +48,17 @@ export const changeUserRole = async (
 
     user.role = role;
     await user.save();
+
+    await recordAudit({
+      actor: auditActorFromUser(admin),
+      action: "user.role_changed",
+      entityType: "user",
+      entityId: user._id,
+      entityLabel: user.name,
+      previousState: { role: previousRole },
+      newState: { role },
+      request: requestMetadata(req),
+    });
 
     res.status(200).json({
       message: "User role updated successfully",
