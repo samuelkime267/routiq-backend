@@ -24,10 +24,17 @@ export const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || "Routiq";
 export const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL || "";
 
 export const FRONTEND_URL =
-  process.env.FRONTEND_URL || "http://auth.localhost:3000";
+  process.env.FRONTEND_URL || "http://localhost:3000";
 
 export const ADMIN_URL =
   process.env.ADMIN_URL || "http://admin.localhost:3000";
+
+/**
+ * Vendor app origin. Every app serves its own auth routes, so vendor password
+ * reset links must point at the vendor host rather than the marketplace.
+ */
+export const VENDOR_URL =
+  process.env.VENDOR_URL || "http://vendor.localhost:3000";
 
 export const HASH_SECRET = process.env.HASH_SECRET || "";
 
@@ -44,3 +51,49 @@ export const CLOUDINARY_FOLDER = process.env.CLOUDINARY_FOLDER || "routiq";
 export const SHIPBUBBLE_API_KEY = process.env.SHIPBUBBLE_API_KEY || "";
 export const SHIPBUBBLE_BASE_URL =
   process.env.SHIPBUBBLE_BASE_URL || "https://api.shipbubble.com/v1";
+
+/**
+ * Shipbubble requires an email on every address-validation call. Address book
+ * entries do not store one, so this contact address is used as the fallback.
+ */
+export const SHIPBUBBLE_CONTACT_EMAIL =
+  process.env.SHIPBUBBLE_CONTACT_EMAIL || "support@routiq.ng";
+
+/**
+ * Optional fixed package category for rate lookups. When unset, the account's
+ * category list is fetched and a sensible default is chosen, because Shipbubble
+ * rejects the request when `category_id` is missing or unknown.
+ */
+export const SHIPBUBBLE_CATEGORY_ID = Number(
+  process.env.SHIPBUBBLE_CATEGORY_ID || 0,
+);
+
+/**
+ * Paystack is the payment provider used for customer checkout. Only the secret
+ * key is required on the server; the public key may be exposed to the browser
+ * for display purposes but the hosted checkout page is always used, so the
+ * secret is never part of a response.
+ *
+ * Both key names are accepted because the existing environment file contains
+ * the historical `PAYSTAK_PUBLIC_KEY` spelling.
+ */
+export const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "";
+export const PAYSTACK_PUBLIC_KEY =
+  process.env.PAYSTACK_PUBLIC_KEY || process.env.PAYSTAK_PUBLIC_KEY || "";
+export const PAYSTACK_BASE_URL =
+  process.env.PAYSTACK_BASE_URL || "https://api.paystack.co";
+export const PAYSTACK_WEBHOOK_SECRET =
+  process.env.PAYSTACK_WEBHOOK_SECRET || PAYSTACK_SECRET_KEY;
+
+/** Public marketplace origin used for payment callback redirects. */
+export const MARKETPLACE_URL =
+  process.env.MARKETPLACE_URL || "http://localhost:3000";
+
+/**
+ * Development-only escape hatch: when Shipbubble is configured but cannot quote
+ * (outage, blocked account), fall back to the platform's configured delivery
+ * fee so checkout and payment can still be exercised locally. It is ignored in
+ * production because the real rate must come from the courier.
+ */
+export const DELIVERY_PLATFORM_FALLBACK =
+  (process.env.DELIVERY_PLATFORM_FALLBACK || "false").toLowerCase() === "true";

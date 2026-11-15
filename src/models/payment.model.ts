@@ -73,12 +73,24 @@ const paymentSchema = new mongoose.Schema(
     },
     paidAt: { type: Date, default: null, index: true },
     failureReason: { type: String, default: null },
+    /**
+     * Payment provider fields. A single provider transaction can cover several
+     * vendor sub-orders, so `providerReference` is shared by the payment rows
+     * created by one checkout while `reference` stays unique per row.
+     */
+    provider: { type: String, default: "paystack", trim: true },
+    providerReference: { type: String, default: null, trim: true, index: true },
+    providerTransactionId: { type: String, default: null, trim: true },
+    authorizationUrl: { type: String, default: null, trim: true },
+    accessCode: { type: String, default: null, trim: true },
+    providerMetadata: { type: mongoose.Schema.Types.Mixed, default: null },
   },
   { timestamps: true },
 );
 
 paymentSchema.index({ status: 1, paidAt: -1 });
 paymentSchema.index({ status: 1, createdAt: -1 });
+paymentSchema.index({ providerReference: 1, status: 1 });
 
 export type PaymentType = InferSchemaType<typeof paymentSchema>;
 

@@ -1,4 +1,4 @@
-import { FRONTEND_URL } from "@/config/env";
+import { FRONTEND_URL, VENDOR_URL } from "@/config/env";
 import { sendMail } from "@/lib/mail/mailer";
 import { passwordResetTemplate } from "@/lib/mail/template";
 import User from "@/models/user.model";
@@ -67,8 +67,11 @@ export const sendResetPasswordLink = async (
 
     await user.save();
 
+    // Auth is per host, so the link must open the app that owns this account.
+    const appUrl = user.role === "vendor" ? VENDOR_URL : FRONTEND_URL;
+
     const { html, text } = passwordResetTemplate(
-      `${FRONTEND_URL}/reset-password/${token}`,
+      `${appUrl}/auth/reset-password/${token}`,
     );
 
     await sendMail({

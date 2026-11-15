@@ -28,6 +28,9 @@ import adminRoleRouter from "./routes/adminRole.route";
 import permissionRouter from "./routes/permission.route";
 import auditLogRouter from "./routes/auditLog.route";
 import settingsRouter from "./routes/settings.route";
+import addressRouter from "./routes/address.route";
+import checkoutRouter from "./routes/checkout.route";
+import paymentRouter from "./routes/payment.route";
 import { initializeAdminRoles } from "@/services/adminRoles";
 import morgan from "morgan";
 const app = express();
@@ -91,6 +94,9 @@ app.use("/api/v1/notifications", notificationRouter);
 app.use("/api/v1/uploads", uploadRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/shipments", shipmentRouter);
+app.use("/api/v1/addresses", addressRouter);
+app.use("/api/v1/checkout", checkoutRouter);
+app.use("/api/v1/payments", paymentRouter);
 
 app.use(errorMiddleware);
 
