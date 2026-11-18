@@ -13,6 +13,13 @@ export const ACTIVITY_TYPES = [
   "payment_confirmed",
   "shipment_updated",
   "dispute_created",
+  "product_submitted",
+  "product_updated",
+  "order_updated",
+  "withdrawal_requested",
+  "withdrawal_approved",
+  "withdrawal_rejected",
+  "withdrawal_paid",
   "admin_action",
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -28,6 +35,7 @@ export const ACTIVITY_SUBJECT_TYPES = [
   "payment",
   "shipment",
   "dispute",
+  "withdrawal",
   "admin",
   "user",
   "platform",

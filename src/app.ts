@@ -17,6 +17,8 @@ import storeRouter from "./routes/store.route";
 import uploadRouter from "./routes/upload.route";
 import adminRouter from "./routes/admin.route";
 import vendorRouter from "./routes/vendor.route";
+import vendorPortalRouter from "./routes/vendorPortal.route";
+import withdrawalRouter from "./routes/withdrawal.route";
 import productRouter from "./routes/product.route";
 import categoryRouter from "./routes/category.route";
 import searchRouter from "./routes/search.route";
@@ -40,7 +42,6 @@ app.use(logger);
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "http://auth.localhost:3000",
   "http://vendor.localhost:3000",
   "http://admin.localhost:3000",
   "http://localhost:5173",
@@ -86,7 +87,9 @@ app.use("/api/v1/escrow", escrowRouter);
 app.use("/api/v1/financials", financialRouter);
 app.use("/api/v1/disputes", disputeRouter);
 app.use("/api/v1/stores", storeRouter);
+app.use("/api/v1/vendors/me", vendorPortalRouter);
 app.use("/api/v1/vendors", vendorRouter);
+app.use("/api/v1/withdrawals", withdrawalRouter);
 app.use("/api/v1/products", productRouter);
 app.use("/api/v1/categories", categoryRouter);
 app.use("/api/v1/search", searchRouter);

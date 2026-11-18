@@ -14,6 +14,13 @@ export const NOTIFICATION_TYPES = [
   "product_suspended",
   "product_restored",
   "order_created",
+  "order_status_updated",
+  "withdrawal_submitted",
+  "withdrawal_approved",
+  "withdrawal_rejected",
+  "withdrawal_paid",
+  "bank_account_verified",
+  "bank_account_rejected",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

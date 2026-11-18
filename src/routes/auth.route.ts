@@ -4,7 +4,6 @@ import {
   login,
   logout,
   refreshToken,
-  handoffSession,
   googleOAuthCallback,
   googleOAuthLogin,
   sendVerificationEmail,
@@ -40,7 +39,6 @@ authRouter.post("/register", registerValidator, register);
 authRouter.post("/login", loginValidator, login);
 authRouter.post("/logout", isAuthenticated, isValidRefreshToken, logout);
 authRouter.post("/refresh-token", isValidRefreshToken, refreshToken);
-authRouter.post("/handoff", isAuthenticated, handoffSession);
 authRouter.get("/google", googleOAuthLogin);
 authRouter.get("/google/callback", googleOAuthCallback);
 authRouter.post("/verify-email", isAuthenticated, sendVerificationEmail);

@@ -9,11 +9,22 @@ import {
   listOrderSubOrders,
 } from "@/controllers/order";
 import {
+  getVendorOrderController,
+  getVendorOrderTimelineController,
+  listVendorOrdersController,
+  shipVendorOrderController,
+  updateVendorOrderStatusController,
+} from "@/controllers/vendorPortal";
+import {
   authorizeRoles,
   isAuthenticated,
   requireAdmin,
   requirePermission,
 } from "@/middleware";
+import {
+  vendorOrderStatusValidator,
+  vendorShipOrderValidator,
+} from "@/validators/vendorPortal.validator";
 
 const orderRouter = Router();
 
@@ -30,6 +41,41 @@ orderRouter.get(
   isAuthenticated,
   authorizeRoles("user"),
   getCustomerOrder,
+);
+
+// Vendor fulfilment routes. The vendor id is resolved from the token, and the
+// response contains only that vendor's own sub-order records.
+orderRouter.get(
+  "/vendor",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  listVendorOrdersController,
+);
+orderRouter.get(
+  "/vendor/:orderId",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  getVendorOrderController,
+);
+orderRouter.get(
+  "/vendor/:orderId/timeline",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  getVendorOrderTimelineController,
+);
+orderRouter.post(
+  "/vendor/:orderId/status",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  vendorOrderStatusValidator,
+  updateVendorOrderStatusController,
+);
+orderRouter.post(
+  "/vendor/:orderId/shipment",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  vendorShipOrderValidator,
+  shipVendorOrderController,
 );
 
 orderRouter.get(

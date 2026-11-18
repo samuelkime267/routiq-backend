@@ -6,6 +6,7 @@ export const UPLOAD_PURPOSES = [
   "store_logo",
   "store_cover",
   "profile_picture",
+  "product_image",
 ] as const;
 export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 

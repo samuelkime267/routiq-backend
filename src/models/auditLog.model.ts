@@ -20,6 +20,7 @@ export const AUDIT_ENTITY_TYPES = [
   "escrow",
   "shipment",
   "dispute",
+  "withdrawal",
   "settings",
   "platform",
 ] as const;

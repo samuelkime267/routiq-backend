@@ -41,7 +41,7 @@ describe("email templates", () => {
   });
 
   describe("passwordResetTemplate", () => {
-    const link = "http://auth.localhost:3000/reset-password/abc123";
+    const link = "http://localhost:3000/auth/reset-password/abc123";
     const { html, text } = passwordResetTemplate(link);
 
     it("returns both HTML and plain-text versions", () => {

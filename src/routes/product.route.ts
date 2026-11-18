@@ -17,7 +17,19 @@ import {
   suspendProduct,
 } from "@/controllers/product";
 import {
+  archiveVendorProductController,
+  createVendorProductController,
+  deleteVendorProductController,
+  getVendorProductController,
+  listVendorProductsController,
+  setVendorProductPublicationController,
+  submitVendorProductController,
+  updateVendorProductController,
+  updateVendorProductStockController,
+} from "@/controllers/vendorPortal";
+import {
   isAuthenticated,
+  authorizeRoles,
   optionalAuth,
   requireAdmin,
   requirePermission,
@@ -28,6 +40,12 @@ import {
   restoreProductValidator,
   suspendProductValidator,
 } from "@/validators/product.validator";
+import {
+  createVendorProductValidator,
+  setVendorProductPublicationValidator,
+  updateVendorProductValidator,
+  updateVendorStockValidator,
+} from "@/validators/vendorPortal.validator";
 
 const productRouter = Router();
 
@@ -46,6 +64,68 @@ productRouter.get(
   requireAdmin,
   requirePermission("products.view"),
   listPendingProducts,
+);
+
+// Vendor catalogue management. Declared before the public `/` and `/:productId`
+// routes so `/vendor` is never captured as a product id. Ownership is resolved
+// from the access token inside every controller.
+productRouter.get(
+  "/vendor",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  listVendorProductsController,
+);
+productRouter.post(
+  "/vendor",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  createVendorProductValidator,
+  createVendorProductController,
+);
+productRouter.get(
+  "/vendor/:productId",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  getVendorProductController,
+);
+productRouter.patch(
+  "/vendor/:productId",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  updateVendorProductValidator,
+  updateVendorProductController,
+);
+productRouter.patch(
+  "/vendor/:productId/stock",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  updateVendorStockValidator,
+  updateVendorProductStockController,
+);
+productRouter.post(
+  "/vendor/:productId/submit",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  submitVendorProductController,
+);
+productRouter.patch(
+  "/vendor/:productId/publication",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  setVendorProductPublicationValidator,
+  setVendorProductPublicationController,
+);
+productRouter.post(
+  "/vendor/:productId/archive",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  archiveVendorProductController,
+);
+productRouter.delete(
+  "/vendor/:productId",
+  isAuthenticated,
+  authorizeRoles("vendor"),
+  deleteVendorProductController,
 );
 
 // Public marketplace shelves. Declared before `/:productId` so Express does
